@@ -39,7 +39,28 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 }
 
 // TODO: implement the syscall
-pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
+pub fn sys_trace(trace_request: usize, id: usize, data: usize) -> isize {
     trace!("kernel: sys_trace");
-    -1
+
+    // 先准备好返回值，默认是 -1，表示失败
+    let mut result: isize = -1;
+
+    if trace_request == 0 {
+        // 0 表示读：读地址 id 处的一个字节
+        let ptr = id as *const u8;
+        let value = unsafe { *ptr };
+        result = value as isize;
+    } else if trace_request == 1 {
+        // 1 表示写：把 data 的最低 8 位写到地址 id 处
+        let ptr = id as *mut u8;
+        unsafe {
+            *ptr = data as u8;
+        }
+        result = 0;
+    } else if trace_request == 2 {
+        // 2 表示查询：当前任务对系统调用 id 的调用次数
+        let count = crate::task::get_syscall_count(id);
+        result = count as isize;
+    }
+    result
 }
